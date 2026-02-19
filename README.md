@@ -9,6 +9,7 @@ App de control de asistencia con registro de entrada/salida y generación de rep
 - **xlsx** — Exportación a Excel
 - **jsPDF + jspdf-autotable** — Exportación a PDF
 - **Bootstrap 5** — Estilos (via CDN)
+- **vite-plugin-pwa** — Soporte PWA (instalable como app nativa)
 
 ## Instalación
 
@@ -67,4 +68,20 @@ src/
 - **Login** con email y contraseña
 - **Marcar Entrada / Salida** con timestamp en tiempo real
 - **Reporte** filtrable por rango de fechas con cálculo de horas trabajadas
-- **Exportar** reporte a Excel o PDF
+  - Descuenta automáticamente **30 minutos de colación** en días lunes a sábado
+  - Muestra horas brutas, deducción y horas netas por día
+- **Exportar** reporte a Excel o PDF (incluye columna de colación)
+- **PWA instalable** — se puede añadir a la pantalla de inicio en Android, iOS y escritorio
+
+## Despliegue en Netlify
+
+El proyecto está listo para desplegarse en Netlify:
+
+| Setting           | Valor           |
+| ----------------- | --------------- |
+| Build command     | `npm run build` |
+| Publish directory | `dist`          |
+
+El archivo `public/_redirects` ya está incluido para que las rutas del cliente funcionen correctamente.
+
+Una vez desplegado bajo HTTPS, la app será instalable como PWA desde el navegador.
