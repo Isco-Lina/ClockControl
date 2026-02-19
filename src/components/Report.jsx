@@ -12,6 +12,14 @@ function toYmd(date) {
   return `${y}-${m}-${d}`;
 }
 
+function isMonToSat(dateStr) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dow = new Date(y, m - 1, d).getDay(); // 0=Dom, 1=Lun, 6=Sáb
+  return dow >= 1 && dow <= 6;
+}
+
+const LUNCH_DEDUCTION = 30; // minutos
+
 function pairLogsToDailyRows(logs) {
   const rowsByDay = new Map();
   const sorted = [...logs].sort((a, b) => (a.localTs || 0) - (b.localTs || 0));
@@ -26,6 +34,8 @@ function pairLogsToDailyRows(logs) {
         in: dt,
         out: null,
         minutes: 0,
+        deduction: 0,
+        netMinutes: 0,
         pending: true,
       });
     } else if (item.type === "OUT") {
@@ -36,12 +46,16 @@ function pairLogsToDailyRows(logs) {
         r.out = dt;
         r.pending = false;
         r.minutes = Math.max(0, Math.round((r.out - r.in) / 60000));
+        r.deduction = isMonToSat(r.date) ? LUNCH_DEDUCTION : 0;
+        r.netMinutes = Math.max(0, r.minutes - r.deduction);
       } else {
         dayRows.push({
           date: dayKey,
           in: null,
           out: dt,
           minutes: 0,
+          deduction: 0,
+          netMinutes: 0,
           pending: false,
           orphanOut: true,
         });
@@ -95,7 +109,7 @@ export default function Report() {
           return ts >= startTs && ts <= endTs;
         });
       const dailyRows = pairLogsToDailyRows(logs);
-      const total = dailyRows.reduce((acc, r) => acc + (r.minutes || 0), 0);
+      const total = dailyRows.reduce((acc, r) => acc + (r.netMinutes || 0), 0);
       setRows(dailyRows);
       setTotalMinutes(total);
     } catch (e) {
@@ -113,7 +127,9 @@ export default function Report() {
       Fecha: r.date,
       Entrada: fmtTime(r.in),
       Salida: fmtTime(r.out),
-      "Horas trabajadas": (r.minutes / 60).toFixed(2),
+      "Horas brutas": (r.minutes / 60).toFixed(2),
+      "Colación (h)": r.deduction > 0 ? (r.deduction / 60).toFixed(2) : "-",
+      "Horas netas": (r.netMinutes / 60).toFixed(2),
       Estado: estadoLabel(r),
     }));
     const ws = XLSX.utils.json_to_sheet(data);
@@ -135,12 +151,25 @@ export default function Report() {
       fmtTime(r.in),
       fmtTime(r.out),
       (r.minutes / 60).toFixed(2),
+      r.deduction > 0 ? `-${(r.deduction / 60).toFixed(2)}` : "-",
+      (r.netMinutes / 60).toFixed(2),
       estadoLabel(r),
     ]);
 
     const result = autoTable(doc, {
       startY: 26,
-      head: [["Fecha", "Entrada", "Salida", "Horas", "Estado"]],
+      head: [
+        [
+          "Fecha",
+          "Entrada",
+          "Salida",
+          "Horas brutas",
+          "Colación",
+          "Horas netas",
+          "Estado",
+        ],
+      ],
+      columnStyles: { 4: { halign: "center" } },
       body,
       styles: { fontSize: 9 },
     });
@@ -208,7 +237,7 @@ export default function Report() {
           </div>
           {rows.length > 0 && (
             <div className="alert alert-info mb-3 d-flex justify-content-between align-items-center">
-              <span>Total horas trabajadas:</span>
+              <span>Total horas netas (sin colación):</span>
               <strong>{(totalMinutes / 60).toFixed(2)} h</strong>
             </div>
           )}
@@ -219,14 +248,16 @@ export default function Report() {
                   <th>Fecha</th>
                   <th>Entrada</th>
                   <th>Salida</th>
-                  <th>Horas</th>
+                  <th>Horas brutas</th>
+                  <th>Colación</th>
+                  <th>Horas netas</th>
                   <th>Estado</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="text-center text-muted py-4">
+                    <td colSpan={7} className="text-center text-muted py-4">
                       {generating
                         ? "Cargando..."
                         : "Selecciona un rango y presiona Generar"}
@@ -244,6 +275,16 @@ export default function Report() {
                       <td>{fmtTime(r.in)}</td>
                       <td>{fmtTime(r.out)}</td>
                       <td>{(r.minutes / 60).toFixed(2)}</td>
+                      <td className="text-center">
+                        {r.deduction > 0 ? (
+                          <span className="badge bg-warning text-dark">
+                            -30 min
+                          </span>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
+                      <td>{(r.netMinutes / 60).toFixed(2)}</td>
                       <td>{estadoLabel(r)}</td>
                     </tr>
                   ))
