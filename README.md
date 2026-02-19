@@ -9,6 +9,7 @@ App de control de asistencia con registro de entrada/salida y generación de rep
 - **xlsx** — Exportación a Excel
 - **jsPDF + jspdf-autotable** — Exportación a PDF
 - **Bootstrap 5** — Estilos (via CDN)
+- **Bootstrap Icons** — Iconografía (paquete npm `bootstrap-icons`)
 - **vite-plugin-pwa** — Soporte PWA (instalable como app nativa)
 
 ## Instalación
@@ -42,9 +43,27 @@ Asegúrate de tener habilitados en Firebase:
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /time_logs/{doc} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.uid;
-      allow create: if request.auth != null;
+
+    // Perfil del usuario
+    match /users/{uid} {
+      allow read, write: if request.auth != null
+        && request.auth.uid == uid;
+    }
+
+    // Registros de asistencia
+    match /time_logs/{docId} {
+
+      // Leer solo si el registro pertenece al usuario
+      allow read: if request.auth != null
+        && resource.data.uid == request.auth.uid;
+
+      // Crear solo si el uid del registro coincide con el usuario autenticado
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid;
+
+      // Actualizar o borrar solo si le pertenece
+      allow update, delete: if request.auth != null
+        && resource.data.uid == request.auth.uid;
     }
   }
 }
@@ -65,7 +84,8 @@ src/
 
 ## Funcionalidades
 
-- **Login** con email y contraseña
+- **Registro de cuenta** — desde la pantalla de login el usuario puede alternar al modo "Crear cuenta" ingresando email y contraseña; al registrarse se crea automáticamente un perfil en la colección `users` de Firestore
+- **Login / Logout** — autenticación con email y contraseña; el botón de cierre de sesión (icono `bi-box-arrow-right`) está disponible en la cabecera del panel principal
 - **Marcar Entrada / Salida** con timestamp en tiempo real
 - **Reporte** filtrable por rango de fechas con cálculo de horas trabajadas
   - Descuenta automáticamente **30 minutos de colación** en días lunes a sábado
