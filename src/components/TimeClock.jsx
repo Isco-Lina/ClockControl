@@ -1,5 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { auth, db } from "../firebase/firebase";
+import { signOut } from "firebase/auth";
 import {
   addDoc,
   collection,
@@ -70,6 +71,10 @@ export default function TimeClock() {
     }
   }
 
+  async function handleLogout() {
+    await signOut(auth);
+  }
+
   const lastLabel =
     lastLog?.type === "IN"
       ? "Entrada"
@@ -89,9 +94,17 @@ export default function TimeClock() {
   return (
     <div className="container py-5" style={{ maxWidth: 480 }}>
       <div className="card shadow-sm">
-        <div className="card-header bg-primary text-white">
+        <div className="card-header bg-primary text-white d-flex justify-content-between align-items-center">
           <h5 className="mb-0">Control de Asistencia</h5>
+          <button
+            onClick={handleLogout}
+            className="btn btn-sm btn-outline-light border-0"
+            title="Cerrar sesión"
+          >
+            <i className="bi bi-box-arrow-right fs-5"></i>
+          </button>
         </div>
+
         <div className="card-body">
           {error && <div className="alert alert-danger py-2">{error}</div>}
           {success && <div className="alert alert-success py-2">{success}</div>}
